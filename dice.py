@@ -4,6 +4,9 @@ import colorsys
 # hsl(261, 100%, 50%) gradient color 1
 # hsl(286, 100%, 50%) gradient color 2
 
+colora = 261
+colorb = 290
+
 
 def interpolate(
     h1, h2, d
@@ -20,7 +23,7 @@ def rgbtohex(r, g, b):
 
 
 # some settings
-windowsize = 1000
+windowsize = 1350
 # end of settings
 
 
@@ -32,8 +35,8 @@ canvas.pack()
 win.resizable(width=0, height=0)
 win.winfo_toplevel().title("Dice Visualizer")
 
-currentdice = [6, 6, "0", "1", "1"]
-customdice = [[2, 4, 6], [1, 1, 10]]
+currentdice = [6, 6]
+customdice = [[1, 2, 4, 8]]
 
 
 def namedice(dice):
@@ -63,9 +66,9 @@ def namedice(dice):
             if name != "":
                 name += ", "
             if customamounts[i] == 1:
-                name += "cd" + str(i + 1)
+                name += "c" + str(i + 1)
             else:
-                name += str(customamounts[i]) + "cd" + str(i + 1)
+                name += str(customamounts[i]) + "c" + str(i + 1)
     return name
 
 
@@ -126,10 +129,12 @@ def visualize():
     # graphs it
     for i in range(len(probabilities)):
         color = colorsys.hls_to_rgb(
-            round(interpolate(261, 286, probabilities[i] / greatest)) / 360, 0.5, 1
+            round(interpolate(colora, colorb, probabilities[i] / greatest)) / 360,
+            0.5,
+            1,
         )
         color = rgbtohex(color[0] * 255, color[1] * 255, color[2] * 255)
-        y = windowsize - (probabilities[i] / greatest) * windowsize * 0.8
+        y = windowsize - (probabilities[i] / greatest) * windowsize * 0.75
         canvas.create_rectangle(
             width * i,
             windowsize,
@@ -175,15 +180,35 @@ def visualize():
         )
 
 
+def formatdigit(x):
+    if isinstance(x, int):
+        return ("d", 1, x)
+    return x
+
+
 def decode(text):
     if text.isdigit():
-        if int(text) > 0:
+        if int(text) >= 1:
             return int(text)
     else:
-        if text[0] == "c":
-            number = text[1:]
-            if number.isdigit() and int(number) >= 1:
-                return str(int(number) - 1)
+        if "d" in text or "c" in text:
+            letter = ""
+            if "d" in text:
+                data = text.split("d")
+                letter = "d"
+            else:
+                data = text.split("c")
+                letter = "c"
+
+            if data[0] == "":
+                data[0] = "1"
+            data.insert(0, letter)
+            if (data[1].isdigit() and int(data[1]) >= 1) and (
+                data[2].isdigit() and int(data[2]) >= 1
+            ):
+                data[1] = int(data[1])
+                data[2] = int(data[2])
+                return data
         else:
             inputlist = text.split(",")
             for i in range(len(inputlist)):
@@ -200,18 +225,38 @@ def decode(text):
 
 def buttonpress():
     i = retrieve_input()
-    if i != -1 and not isinstance(i, list):
-        if isinstance(i, str):
-            if int(i) >= len(customdice):
+    if i != -1 and (isinstance(i, int) or isinstance(i[0], str)):
+
+        i = formatdigit(i)
+        if i[0] == "c":
+            i[2] -= 1
+            if i[2] >= len(customdice):
                 return
-        currentdice.append(i)
+            for j in range(i[1]):
+                currentdice.append(str(i[2]))
+        else:
+
+            for j in range(i[1]):
+                currentdice.append(i[2])
         visualize()
 
 
 def button2press():
     i = retrieve_input()
-    if i != -1 and i in currentdice:
-        currentdice.remove(i)
+
+    if i != -1 and (isinstance(i, int) or isinstance(i[0], str)):
+        i = formatdigit(i)
+        if i[0] == "c":
+            i[2] -= 1
+            if i[2] >= len(customdice):
+                return
+            for j in range(i[1]):
+                if str(i[2]) in currentdice:
+                    currentdice.remove(str(i[2]))
+        else:
+            for j in range(i[1]):
+                if i[2] in currentdice:
+                    currentdice.remove(i[2])
         visualize()
 
 
@@ -222,16 +267,19 @@ def button3press():
             if [i] not in customdice:
                 customdice.append([i])
         else:
-            sortedi = sorted(i)
-            if sortedi not in customdice:
-                customdice.append(sortedi)
+            if isinstance(i[0], int):
+                sortedi = sorted(i)
+                if sortedi not in customdice:
+                    customdice.append(sortedi)
 
     visualize()
 
 
 def button4press():
     i = retrieve_input()
-    if i != -1 and isinstance(i, int) and i <= len(customdice):
+    if i != -1 and (not isinstance(i, list)) and i <= len(customdice):
+        if isinstance(i, str):
+            i = int(i)
         customdice.pop(i - 1)
         j = 0
         while j < len(currentdice):
@@ -239,6 +287,9 @@ def button4press():
                 currentdice.pop(j)
                 j -= 1
             j += 1
+        for k in range(len(currentdice)):
+            if isinstance(currentdice[k], str) and int(currentdice[k]) > i - 1:
+                currentdice[k] = str(int(currentdice[k]) - 1)
         visualize()
 
 
@@ -291,3 +342,4 @@ button4.place(
 visualize()
 
 win.mainloop()
+
